@@ -76,10 +76,10 @@ apiRouter.get('/latlng', async (req, res) => {
 
     let googleMapsApiUrl;
     if (placeId) {
-      // If placeId is provided, fetch the details using placeId
+      
       googleMapsApiUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&key=${googletoken}`;
     } else {
-      // If address is provided, fetch the details using address
+     
       googleMapsApiUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${googletoken}`;
     }
 
@@ -115,7 +115,7 @@ app.use((req, res, next) => {
 
 app.use(express.static("../frontend"));
 
-setTimeout(() => {
-  console.log(spotifyToken);
-  console.log(googletoken);
-}, 3000);
+// setTimeout(() => {
+//   console.log(spotifyToken);
+//   console.log(googletoken);
+// }, 3000);
