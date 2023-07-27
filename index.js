@@ -8,6 +8,7 @@ const PORT = 3001;
 const apiRouter = express.Router();
 
 let spotifyToken;
+const googletoken = process.env.GOOGLE_API_KEY;
 
 app.use(
   cors({
@@ -37,47 +38,64 @@ const spotifyTokenGet = () => {
 
 spotifyTokenGet();
 
-apiRouter.get("/test", function (req, res) {
-  console.log(`Hello`);
+apiRouter.get("/spotifykey", function (req, res) {
+  
   res.send(spotifyToken);
 });
 
-app.get('/places', async (req, res) => {
-  const apiKey = process.env.PLACES_API_KEY;
-  const { query } = req.query;
+apiRouter.get("/googlekey", function (req, res) {
+ 
+  res.send(googletoken);
+});
 
+apiRouter.get('/distance', async (req, res) => {
   try {
-    const response = await axios.get('https://maps.googleapis.com/maps/api/place/textsearch/json', {
-      params: {
-        query,
-        key: apiKey,
-      },
-    });
+    const { originLat, originLng, destinationLat, destinationLng } = req.query;
 
+    if (!originLat || !originLng || !destinationLat || !destinationLng) {
+      return res.status(400).json({ error: 'Missing required parameters' });
+    }
+
+    const googleMapsApiUrl = `https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&origins=${originLat},${originLng}&destinations=${destinationLat},${destinationLng}&key=${googletoken}`;
+
+    const response = await axios.get(googleMapsApiUrl);
     res.json(response.data);
   } catch (error) {
-    console.error('Error fetching places:', error);
-    res.status(500).json({ error: 'An error occurred while fetching places' });
+    console.error('Error fetching data from Google Maps API:', error.message);
+    res.status(500).json({ error: 'Error fetching data from Google Maps API' });
   }
 });
 
-app.get('/distance-matrix', async (req, res) => {
-  const apiKey = process.env.DISTANCE_MATRIX_API_KEY;
-  const { origins, destinations } = req.query;
-
+apiRouter.get('/latlng', async (req, res) => {
   try {
-    const response = await axios.get('https://maps.googleapis.com/maps/api/distancematrix/json', {
-      params: {
-        origins,
-        destinations,
-        key: apiKey,
-      },
-    });
+    const { address, placeId } = req.query;
 
-    res.json(response.data);
+    if (!address && !placeId) {
+      return res.status(400).json({ error: 'Missing required parameters' });
+    }
+
+    let googleMapsApiUrl;
+    if (placeId) {
+      // If placeId is provided, fetch the details using placeId
+      googleMapsApiUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&key=${googletoken}`;
+    } else {
+      // If address is provided, fetch the details using address
+      googleMapsApiUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${googletoken}`;
+    }
+
+    const response = await axios.get(googleMapsApiUrl);
+    const data = response.data;
+
+    if (data && data.status === 'OK') {
+      const { lat, lng } = data.results[0].geometry.location;
+      res.json({ latlng: { lat, lng } });
+    } else {
+      console.log('Error fetching latitude and longitude from Google Maps API.');
+      res.status(500).json({ error: 'Error fetching latitude and longitude from Google Maps API' });
+    }
   } catch (error) {
-    console.error('Error fetching distance matrix:', error);
-    res.status(500).json({ error: 'An error occurred while fetching distance matrix' });
+    console.error('Error fetching latitude and longitude from Google Maps API:', error.message);
+    res.status(500).json({ error: 'Error fetching latitude and longitude from Google Maps API' });
   }
 });
 
@@ -85,10 +103,19 @@ app.use("/api", apiRouter);
 
 app.listen(PORT, () => {
   console.log(`Sever is running on port ${PORT}`);
+
 });
+
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  next();
+});
+
+
 
 app.use(express.static("../frontend"));
 
 setTimeout(() => {
   console.log(spotifyToken);
+  console.log(googletoken);
 }, 3000);
